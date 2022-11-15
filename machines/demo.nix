@@ -2,29 +2,20 @@
 { config, pkgs, lib, ... }:
 let
   nix-bitcoin = import ./templates/nix-bitcoin.nix;
-  fedimint-override = pkgs.callPackage
-    ({ stdenv, lib, rustPlatform, fetchurl, pkgs, fetchFromGitHub, openssl, pkg-config, perl, clang, jq }:
-      rustPlatform.buildRustPackage rec {
-        pname = "fedimint";
-        version = "master";
-        nativeBuildInputs = [ pkg-config perl openssl clang jq pkgs.mold ];
-        doCheck = false;
-        OPENSSL_DIR = "${pkgs.openssl.dev}";
-        OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";  
-        LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
-        src = builtins.fetchGit {
-          url = "https://github.com/fedimint/fedimint";
-          ref = "hcpp";
-          rev = "10d408e20e99b33e9cca102bf104324cee893134";
-        };
-        cargoSha256 = "sha256-rFkzIvW11DmDEn3QpcAUS7owqU8iTnjX0uTBGUlvtyc=";
-        meta = with lib; {
-          description = "Federated Mint Prototype";
-          homepage = "https://github.com/fedimint/fedimint";
-          license = licenses.mit;
-          maintainers = with maintainers; [ wiredhikari ];
-        };
-      }) {};
+
+  fedimint-override = (import
+    (
+      fetchTarball {
+        url = "https://github.com/edolstra/flake-compat/archive/b4a34015c698c7793d592d66adbab377907a2be8.tar.gz";
+        sha256 = "sha256:1qc703yg0babixi6wshn5wm2kgl5y1drcswgszh4xxzbrwkk9sv7";
+      }
+    )
+    { src = fetchTarball {
+        url = "https://github.com/fedimint/fedimint/archive/156763cc37a1e6b8797c463639c29858bb4388e2.tar.gz";
+        sha256 = "sha256:18f1xh4zp7kf0pr3acjw71mk7zs3365szsi8d2n24sbp5m0230kf";
+      };
+    }
+  ).defaultNix;
   fqdn = "${hostName}.demo.sirion.io";
 in
 {
@@ -84,7 +75,7 @@ in
 
     fedimint = {
       enable = true;
-      package = fedimint-override;
+      package = fedimint-override.packages.x86_64-linux.workspaceBuild;
     };
 
     clightning = {
@@ -94,7 +85,7 @@ in
         summary.enable = true;
         fedimint-gw = {
           enable = isGateway;
-          package = fedimint-override;
+          package = fedimint-override.packages.x86_64-linux.workspaceBuild;
         };
       };
       extraConfig = ''
